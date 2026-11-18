@@ -2,7 +2,7 @@
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 
 from odoo import api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import AccessError, UserError
 from odoo.tools.misc import format_date
 
 from odoo.addons.account.models.company import LOCK_DATE_FIELDS
@@ -51,6 +51,14 @@ class AccountUpdateLockDate(models.TransientModel):
         has_adviser_group = self.env.user.has_group("account.group_account_manager")
         if not (has_adviser_group or self.env.user._is_admin()):
             raise UserError(self.env._("You are not allowed to execute this action."))
+        # The dates are written with the rights of the system, so the company
+        # is checked here, before that: only a company of the user is allowed.
+        if self.company_id not in self.env.user.company_ids:
+            raise AccessError(
+                self.env._(
+                    "You are not allowed to change the lock dates of this company."
+                )
+            )
 
     def execute(self):
         self.ensure_one()
